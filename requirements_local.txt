@@ -1,0 +1,31 @@
+# MindTransformer ローカル実行用の依存（このサーバの RTX PRO 6000 Blackwell = sm_120 向け）
+#
+# 元の requirements.txt からの変更点:
+#   - torch: 2.3.0 -> 2.11.0 (sm_120 を含む cu128 ビルド。古い torch は no kernel image で落ちる)
+#   - transformers: 4.40.1 -> 4.46.3 (Llama-3.2 対応に >=4.45 が必要、torch2.11 とも両立)
+#   - 未使用の重量級を除外: lightning / pnpl / torchmetrics / awscli / spacy / statsmodels / seaborn
+#     （MindTransformer の *.py で一切 import されていないことを確認済み）
+#   - accelerate はバージョン指定を外し transformers が要求する版に解決させる
+#
+# torch は cu128 index から入れる（インストールコマンド側で --index-url 指定）:
+#   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0
+
+transformers==4.46.3
+accelerate>=1.0.0
+sentencepiece==0.2.0
+protobuf==4.25.3
+
+# fMRI 前処理・解析コア（バージョン据え置き）
+nilearn==0.10.4
+scikit-learn==1.4.2
+numpy==1.26.4
+pandas==2.2.2
+scipy==1.13.0
+nibabel==5.2.1
+
+# ユーティリティ
+matplotlib==3.8.4
+tqdm==4.66.2
+joblib==1.4.0
+pyyaml

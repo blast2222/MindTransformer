@@ -3,7 +3,7 @@ paths:
   # CHANGED: Use relative paths for portability.
   # Assumes script is run from project root.
   home_folder: "."
-  data_root: "./data/ds003643"
+  data_root: "/gpudata/ssd1/h-sato/fmri2music-alt/data/ds003643"
   
   # CHANGED: Point to the specific location where download.sbatch places GloVe
   glove_path: "./data/glove/glove.6B.300d.txt"
@@ -80,16 +80,16 @@ custom_models:
 # Models to run
 models:
   - name: "meta-llama/Llama-3.3-70B-Instruct"
-    enabled: true
+    enabled: false
     type: "llama"
   - name: "meta-llama/Llama-3.1-8B"
-    enabled: true
+    enabled: false
     type: "llama"
   - name: "meta-llama/Llama-3.2-1B-Instruct"
     enabled: true
     type: "llama"
   - name: "meta-llama/Llama-3.2-3B-Instruct"
-    enabled: true
+    enabled: false
     type: "llama"
 
 # Baseline models configuration

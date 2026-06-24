@@ -283,6 +283,8 @@ def main():
 
             print(f"Loading model {model_name} with settings: {from_pretrained_kwargs}")
             token = config['auth'].get('huggingface_token')
+            if token == "<INSERT_YOUR_HUGGINGFACE_TOKEN_HERE>":
+                token = None
             model = AutoModelForCausalLM.from_pretrained(model_name, token=token, **from_pretrained_kwargs)
             tokenizer = AutoTokenizer.from_pretrained(model_name, token=token)
             if tokenizer.pad_token is None: tokenizer.pad_token = tokenizer.eos_token
