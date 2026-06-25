@@ -16,6 +16,13 @@ ROI が Harvard-Oxford、state subset が論文の8状態、layer集計が全層
   python analyze_mindtransformer_mode1.py \
       --config config_lpp_llama.yaml \
       --model meta-llama/Llama-3.2-1B-Instruct
+
+cd /gpudata/ssd1/h-sato/fmri2music-alt/external/MindTransformer
+micromamba activate mindtransformer_env   # または下のフルパス
+python analyze_mindtransformer_mode1.py \
+    --config config_lpp_llama.yaml \
+    --model meta-llama/Llama-3.2-1B-Instruct
+
 """
 import argparse
 import glob
@@ -209,7 +216,9 @@ def plot_computational_depth(depth_by_roi, fit, out_path, model_name):
     y = [depth_by_roi[r] for r in roi_labels]
     x = np.arange(len(roi_labels))
     fig, ax = plt.subplots(figsize=(7, 5))
-    ax.plot(x, y, "o-", color="#1f77b4", markersize=9, linewidth=2, zorder=3)
+    # 本研究 plot_computational_depth_by_roi.py に忠実に: 折線は描かず点(scatter)と
+    # fit 線だけにする。点は #1f77b4、fit 線は #d62728。
+    ax.scatter(x, y, color="#1f77b4", s=58, zorder=3)
     for xi, yi in zip(x, y):
         ax.annotate(f"{yi:.2f}", (xi, yi), textcoords="offset points",
                     xytext=(0, 8), ha="center", fontsize=10)
@@ -219,7 +228,7 @@ def plot_computational_depth(depth_by_roi, fit, out_path, model_name):
         slope, intercept, r2 = fit
         xn = np.linspace(0.0, 1.0, len(fit_x))
         fit_y = slope * xn + intercept
-        ax.plot(fit_x, fit_y, "--", color="crimson", linewidth=2,
+        ax.plot(fit_x, fit_y, color="#d62728", linewidth=1.8, zorder=2,
                 label=f"auditory fit (HG→MTG)\nslope={slope:.3f}, R²={r2:.3f}")
         ax.legend(loc="upper left", fontsize=10)
     ax.set_xticks(x)
@@ -239,17 +248,24 @@ def plot_computational_depth(depth_by_roi, fit, out_path, model_name):
 
 
 def plot_winning_ratio(ratios_by_group, out_path, model_name):
+    """本研究 plot_state_winning_ratios.py の作図に忠実に揃える:
+    - state バーは Spectral グラデで色分け（全 state を lm 状態として扱う）
+    - 上から浅い->深いの順（barh + invert_yaxis）
+    """
     groups = list(ratios_by_group.keys())
     fig, axes = plt.subplots(1, len(groups), figsize=(5 * len(groups), 6), sharey=True)
     if len(groups) == 1:
         axes = [axes]
-    order = ALL_STATES  # 浅い->深い（下から上 or 左から）
+    order = ALL_STATES  # 浅い->深い（上から）
+    # 本研究 _get_winning_ratio_bar_colors の lm 配色（Spectral 0.05〜0.95）を踏襲。
+    colors = plt.cm.Spectral(np.linspace(0.05, 0.95, len(order)))
     for ax, gname in zip(axes, groups):
         ratios = ratios_by_group[gname]
         vals = [ratios[s] for s in order]
         labels = [STATE_DISPLAY[s] for s in order]
         ypos = np.arange(len(order))
-        ax.barh(ypos, vals, color="#4c72b0")
+        ax.barh(ypos, vals, color=colors, edgecolor="none")
+        ax.invert_yaxis()  # 先頭(浅い)を上に
         for yi, v in zip(ypos, vals):
             ax.text(v + 0.3, yi, f"{v:.1f}%", va="center", fontsize=8)
         ax.set_yticks(ypos)
