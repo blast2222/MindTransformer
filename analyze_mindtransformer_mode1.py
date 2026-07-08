@@ -6,7 +6,7 @@
       x軸 = 皮質階層 HG -> PT -> STG -> MTG -> IFG -> AG（Harvard-Oxford atlas）
       y軸 = Weighted Computational Depth D̄_R（式2）。中核8状態subset S（式1, δ=(i-1)/7）。
       全層平均。auditory stream(HG->MTG) に線形フィット (slope/R^2)。
-  - Figure 1b: Winning ratio（13状態の勝者割合）を whole-brain / auditory / language 別に。
+  - Figure 1b: Winning ratio（13状態の勝者割合）を auditory / language / whole-brain 別に。
 
 計算ロジックは本研究の plot_computational_depth_by_roi.py / state_winning_ratio.py と同型
 （voxelごとに cc最大の状態を argmax -> 深さ割当 -> ROI平均）。違いは入力が corr.gz、
@@ -332,9 +332,9 @@ def main():
         lang_mask |= roi_masks[r]
 
     ratios_by_group = {}
-    for gname, vmask in [("Whole-brain", whole_brain_mask),
-                         ("Auditory cortex", aud_mask),
-                         ("Language network", lang_mask)]:
+    for gname, vmask in [("Auditory cortex", aud_mask),
+                         ("Language network", lang_mask),
+                         ("Whole-brain", whole_brain_mask)]:
         ratios, total = compute_winning_ratio(data, layers, vmask)
         ratios_by_group[gname] = ratios
         top = max(ratios.items(), key=lambda kv: (kv[1] if np.isfinite(kv[1]) else -1))
