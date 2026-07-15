@@ -196,6 +196,7 @@ experiment:
     - 'pre_ffn_norm'
     - 'ffn_activated_state'
     - 'ffn_output'
+    - 'final_block_output'
   run_baselines: true
   save_intermediate: true
   plot_results: true
