@@ -20,9 +20,9 @@ DEFAULT_OUT_DIR = os.path.join(REPO_ROOT, "data", "speech", "resp")
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--avg_dir", default=DEFAULT_AVG_DIR,
-                        help="average_subject_run-<i>.gz のディレクトリ")
+                        help="Directory containing average_subject_run-<i>.gz files.")
     parser.add_argument("--out_dir", default=DEFAULT_OUT_DIR,
-                        help="run 別 .npy の出力先(既定 data/speech/resp)")
+                        help="Output directory for per-run .npy files (default: data/speech/resp).")
     args = parser.parse_args()
 
     paths = sorted(

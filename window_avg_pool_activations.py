@@ -86,16 +86,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="meta-llama/Llama-3.2-1B-Instruct")
     parser.add_argument("--model_key", default="llama-3.2-1b",
-                        help="出力ディレクトリ・NPZ ファイル名に使う短いキー")
+                        help="Short key used in the output directory and NPZ file names.")
     parser.add_argument("--series_prefix", default=None,
-                        help="series 名の prefix（例: llama, gemma, mistral, qwen, gpt-oss）。"
-                             "省略時は model_key の最初のハイフンより前を使う（llama-3.2-1b → llama）。")
+                        help="Prefix for output series names (e.g., llama, gemma, mistral, qwen, gpt-oss). "
+                             "Defaults to the portion of model_key before the first hyphen.")
     parser.add_argument("--window_s", type=float, default=10.0)
     parser.add_argument("--stride_s", type=float, default=2.0)
     parser.add_argument("--out_root", required=True,
-                        help="出力ルート（例 data/speech/speech-emb）")
+                        help="Output root (e.g., data/speech/speech-emb).")
     parser.add_argument("--states", nargs="*", default=None,
-                        help="抽出する MindTransformer 内部 state 名（既定: STATE_RENAME 全キー）")
+                        help="MindTransformer state names to extract (default: all STATE_RENAME keys).")
     args = parser.parse_args()
 
     if not np.isfinite(args.window_s) or args.window_s <= 0:
@@ -141,10 +141,10 @@ def main():
             states_to_use = [k for k in STATE_RENAME.keys() if k in acts]
             skipped = [k for k in acts.keys() if k not in STATE_RENAME]
             if skipped:
-                print(f"  (skip: STATE_RENAME に無い state を出力しない) {sorted(skipped)}")
+                print(f"  (skip: states without STATE_RENAME entries are not written) {sorted(skipped)}")
             missing = [k for k in STATE_RENAME.keys() if k not in acts]
             if missing:
-                print(f"  (info: activation に無い state) {sorted(missing)}")
+                print(f"  (info: states absent from activations) {sorted(missing)}")
         # Check word-count consistency.
         if not states_to_use:
             requested = list(STATE_RENAME) if args.states is None else args.states
@@ -163,7 +163,7 @@ def main():
         n_layers, n_words, _ = np.asarray(acts[any_state]).shape
         if n_words != len(onsets):
             raise ValueError(
-                f"run{run_1}: activation 単語数 {n_words} != onsets 数 {len(onsets)}"
+                f"run{run_1}: activation word count {n_words} != onset count {len(onsets)}"
             )
         windows = make_windows(run_duration, args.window_s, args.stride_s)
         print(f"  run{run_1}: dur={run_duration:.1f}s, words={n_words}, windows={len(windows)}")
