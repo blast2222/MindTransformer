@@ -1,6 +1,6 @@
-"""被験者平均 fMRI を run ごとの (voxel, TR) .npy に保存する。
+"""Export average-subject fMRI as one (voxel, TR) .npy file per run.
 
-MindTransformer ディレクトリから実行:
+Run from the MindTransformer directory:
   python export_average_subject_to_resp.py
 """
 import argparse
@@ -11,7 +11,7 @@ import re
 import joblib
 import numpy as np
 
-# external/MindTransformer から見たリポジトリルート(1 つ上の external の、さらに 1 つ上)
+# Repository root from external/MindTransformer.
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_AVG_DIR = "outputs/lpp_en_average_subject"
 DEFAULT_OUT_DIR = os.path.join(REPO_ROOT, "data", "speech", "resp")
@@ -35,10 +35,10 @@ def main():
 
     for path in paths:
         run_0 = int(re.search(r"run-(\d+)", path).group(1))
-        run_1 = run_0 + 1  # .npy は 1 始まり
+        run_1 = run_0 + 1  # Output files use one-based run indices.
         arr = np.asarray(joblib.load(path), dtype=np.float32)  # (TR, voxel)
         out = os.path.join(args.out_dir, f"lpp_en_avg-subject_run-{run_1}.npy")
-        np.save(out, arr.T)  # (voxel, TR) で保存(音楽 Resp_*.npy と同じ向き)
+        np.save(out, arr.T)  # Save as (voxel, TR).
         print(f"run{run_1}: (TR,voxel)={arr.shape} -> saved (voxel,TR)={arr.T.shape} {out}")
 
 

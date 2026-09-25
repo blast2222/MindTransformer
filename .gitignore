@@ -1,8 +1,8 @@
-# 前処理・抽出・encoding の生成物（巨大データ。コードリポジトリには含めない）
+# Generated preprocessing, extraction, and encoding outputs.
 lpp_en_resampled/
 lpp_en_per_subject/
 outputs/
 
-# Python キャッシュ
+# Python cache files.
 __pycache__/
 *.py[cod]

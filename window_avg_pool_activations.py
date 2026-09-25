@@ -1,6 +1,6 @@
-"""単語単位 LLM activation を時間窓平均し、layer × state ごとの NPZ に保存する。
+"""Pool word-level LLM activations into time windows and save one NPZ per layer and state.
 
-MindTransformer ディレクトリから実行:
+Run from the MindTransformer directory:
   python window_avg_pool_activations.py \
       --model meta-llama/Llama-3.2-1B-Instruct \
       --model_key llama-3.2-1b \
@@ -17,8 +17,8 @@ import joblib
 
 ACT_DIR = "outputs/lpp_llms_activations"
 
-# MindTransformer の hook state を出力 series 名へ対応付ける。
-# input_hidden_state は前 layer の block-output と重複するため出力しない。
+# Map MindTransformer hook states to output series names.
+# input_hidden_state duplicates the previous layer's block-output and is omitted.
 STATE_RENAME = {
     "pre_attn_norm":            "pre-attn-norm",
     "per_head_q":               "q",
@@ -41,8 +41,7 @@ def sanitize_model(model_name):
 
 
 def load_run_activations(model_name, run_index_1based):
-    """run の全 part を読み、dict{state: (n_layers, n_words_total, dim)} を返す。
-    part は単語方向(axis=1)に連結する。"""
+    """Load all activation parts for a run and concatenate them along the word axis."""
     sm = sanitize_model(model_name)
     pattern = os.path.join(
         ACT_DIR, f"{sm}_lpp_en_run-run-{run_index_1based}_part-*_activations.gz"
@@ -63,23 +62,20 @@ def load_run_activations(model_name, run_index_1based):
 
 
 def make_windows(run_duration_s, window_s, stride_s):
-    """[0, run_duration] を window_s 幅・stride_s 刻みでスライスした (start, end) のリスト。
-    末尾は run 終端を超えない範囲。"""
+    """Return full windows of length window_s at stride_s over the run."""
     windows = []
     start = 0.0
     while start + window_s <= run_duration_s + 1e-9:
         windows.append((start, start + window_s))
         start += stride_s
-    # 末尾に端数が残り、かつ窓が1つも無い場合の保険
+    # Keep a single partial window for runs shorter than window_s.
     if not windows and run_duration_s > 0:
         windows.append((0.0, run_duration_s))
     return windows
 
 
 def window_avg_pool_one_layer_state(layer_word_vecs, onsets, win_start, win_end):
-    """窓 [win_start, win_end) に onset が入る単語ベクトルを平均。
-    layer_word_vecs: (n_words, dim) / onsets: (n_words,)
-    窓内に単語が無ければ None。"""
+    """Average word vectors with onsets in [win_start, win_end), or return None."""
     mask = (onsets >= win_start) & (onsets < win_end)
     if not np.any(mask):
         return None
@@ -104,7 +100,7 @@ def main():
 
     series_prefix = args.series_prefix or args.model_key.split("-", 1)[0]
 
-    # onsets/offsets（run別）
+    # Per-run onsets and offsets.
     oo = joblib.load(os.path.join(ACT_DIR, "onsets_offsets_lpp_en.gz"))
     n_runs = len(oo)
     print(f"runs: {n_runs}")
@@ -112,18 +108,15 @@ def main():
     out_dir = os.path.join(args.out_root, args.model_key)
     os.makedirs(out_dir, exist_ok=True)
 
-    # window/stride のラベル（音楽の "window10s-stride1_5s" に倣い、小数点は _ に）
+    # Use underscores for decimal points in window and stride labels.
     def fmt(x):
         return (f"{x:g}").replace(".", "_")
     win_label = f"window{fmt(args.window_s)}s-stride{fmt(args.stride_s)}s"
 
-    # series ごとに「全 run の窓」を貯めて 1 NPZ に保存する。
-    # series = "<series_prefix>-layer<L>-<new_state>"（new_state は STATE_RENAME 経由）。
-    # 抽出済み activation の内部 key は snake_case（例 per_head_q）だが、出力 series 名は
-    # wav2vec 側と揃えた kebab-case（例 q）にリネームする。ここが唯一の翻訳ポイント。
-    # まず全 run を走査して、(new_state, layer) -> {keys:[], vecs:[]} を構築。
+    # Accumulate windows across runs for each renamed state and layer.
+    # Output series names use kebab-case state names.
     accum = {}  # (new_state, layer) -> (keys list, vecs list)
-    states_to_use = args.states  # None なら STATE_RENAME のキー全部を使う
+    states_to_use = args.states  # None selects all STATE_RENAME keys.
 
     for run_i in range(n_runs):
         run_1 = run_i + 1
@@ -132,7 +125,7 @@ def main():
         run_duration = float(offsets.max())
         acts = load_run_activations(args.model, run_1)
         if states_to_use is None:
-            # STATE_RENAME に含まれ、かつ activations にも存在するキーだけ採用。
+            # Use states available in both STATE_RENAME and the activations.
             states_to_use = [k for k in STATE_RENAME.keys() if k in acts]
             skipped = [k for k in acts.keys() if k not in STATE_RENAME]
             if skipped:
@@ -140,7 +133,7 @@ def main():
             missing = [k for k in STATE_RENAME.keys() if k not in acts]
             if missing:
                 print(f"  (info: activation に無い state) {sorted(missing)}")
-        # 単語数の整合チェック
+        # Check word-count consistency.
         if not states_to_use:
             requested = list(STATE_RENAME) if args.states is None else args.states
             raise ValueError(
@@ -164,7 +157,7 @@ def main():
         print(f"  run{run_1}: dur={run_duration:.1f}s, words={n_words}, windows={len(windows)}")
 
         for state in states_to_use:
-            new_state = STATE_RENAME[state]  # 内部 key → 出力 state 名（KeyError なら STATE_RENAME 未登録）
+            new_state = STATE_RENAME[state]  # Map an internal key to an output state name.
             arr = np.asarray(acts[state])  # (n_layers, n_words, dim)
             for layer in range(arr.shape[0]):
                 lw = arr[layer]  # (n_words, dim)
@@ -174,12 +167,12 @@ def main():
                 for (ws, we) in windows:
                     vec = window_avg_pool_one_layer_state(lw, onsets, ws, we)
                     if vec is None:
-                        continue  # 単語が無い窓はスキップ（fMRI 側もこの窓IDは作らない）
+                        continue  # Skip windows without words.
                     win_id = f"lppEN_run{run_1}_{ws:.2f}_{we:.2f}"
                     accum[key0][0].append(win_id)
                     accum[key0][1].append(vec.astype(np.float32))
 
-    # 保存
+    # Save results.
     n_saved = 0
     for (new_state, layer), (keys, vecs) in accum.items():
         if not keys:
