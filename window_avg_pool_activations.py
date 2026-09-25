@@ -33,7 +33,7 @@ MindTransformer 内部の state 名は本スクリプトで wav2vec 側の LLM �
       --model_key llama-3.2-1b \
       --series_prefix llama \
       --window_s 10 --stride_s 2 \
-      --out_root /gpudata/ssd1/h-sato/fmri2music-alt/data/speech/speech-emb
+      --out_root ../../data/speech/speech-emb
 """
 import argparse
 import glob

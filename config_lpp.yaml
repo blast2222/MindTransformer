@@ -3,7 +3,7 @@ paths:
   # CHANGED: Use relative paths for portability.
   # Assumes script is run from project root.
   home_folder: "."
-  data_root: "/gpudata/ssd1/h-sato/fmri2music-alt/data/speech/ds003643"
+  data_root: "../../data/speech/ds003643"
   
   # CHANGED: Point to the specific location where download.sbatch places GloVe
   glove_path: "./data/glove/glove.6B.300d.txt"

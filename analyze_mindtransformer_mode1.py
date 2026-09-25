@@ -17,12 +17,15 @@ ROI が Harvard-Oxford、state subset が論文の8状態、layer集計が全層
       --config config_lpp_llama.yaml \
       --model meta-llama/Llama-3.2-1B-Instruct
 
-cd /gpudata/ssd1/h-sato/fmri2music-alt/external/MindTransformer
+cd external/MindTransformer  # リポジトリルートから実行
 micromamba activate mindtransformer_env   # または下のフルパス
 python analyze_mindtransformer_mode1.py \
     --config config_lpp_llama.yaml \
     --model meta-llama/Llama-3.2-1B-Instruct
 
+Harvard-Oxford atlas は初回実行時に Nilearn が取得する（ネットワーク必須）。
+`--atlas_data_dir` でキャッシュ先を固定できる。オフライン実行前には、同じキャッシュ先を
+指定してネットワーク接続下で一度実行する。
 """
 import argparse
 import glob
@@ -127,14 +130,17 @@ def get_layers_states(data):
     return layers, states
 
 
-def build_roi_voxel_masks(mask_path):
+def build_roi_voxel_masks(mask_path, atlas_data_dir=None):
     """Harvard-Oxford atlas を mask 空間へ射影し、ROI -> bool voxel mask を返す。
     mindtransformer.py の parcel masking と同じ流儀（masker.transform(atlas.maps)）。
+    atlas_data_dir は Nilearn の atlas キャッシュ先。None なら Nilearn の既定キャッシュを使う。
     """
     masker = NiftiMasker(mask_img=mask_path)
     masker.fit()
     n_voxels = masker.n_elements_
-    atlas = fetch_atlas_harvard_oxford("cort-maxprob-thr25-1mm")
+    atlas = fetch_atlas_harvard_oxford(
+        "cort-maxprob-thr25-1mm", data_dir=atlas_data_dir
+    )
     atlas_1d = masker.transform(atlas.maps).flatten().astype(int)
     roi_masks = {}
     for roi_label, label_indices in CORTICAL_HIERARCHY:
@@ -285,6 +291,10 @@ def main():
     parser.add_argument("--model", default="meta-llama/Llama-3.2-1B-Instruct")
     parser.add_argument("--out_dir", default=None,
                         help="出力先（既定: outputs/lpp_figures）")
+    parser.add_argument(
+        "--atlas_data_dir", default=None,
+        help="Harvard-Oxford atlas の Nilearn キャッシュ先（初回取得時はネットワーク必須）",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -302,7 +312,7 @@ def main():
     print(f"states present: {states}")
 
     print(f"Building ROI masks from: {mask_path}")
-    roi_masks, n_voxels, atlas_1d = build_roi_voxel_masks(mask_path)
+    roi_masks, n_voxels, atlas_1d = build_roi_voxel_masks(mask_path, args.atlas_data_dir)
     whole_brain_mask = np.ones(n_voxels, dtype=bool)
     for r, m in roi_masks.items():
         print(f"  ROI {r}: {int(m.sum())} voxels")

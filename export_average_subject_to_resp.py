@@ -18,7 +18,7 @@ window_align_fmri.py(窓IDキーで Y を固める方式)は音楽の流儀(生 
   # 出力先や入力を変える場合:
   python export_average_subject_to_resp.py \
       --avg_dir outputs/lpp_en_average_subject \
-      --out_dir /gpudata/ssd1/h-sato/fmri2music-alt/data/speech/resp
+      --out_dir ../../data/speech/resp
 """
 import argparse
 import glob
