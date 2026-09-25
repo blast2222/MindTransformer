@@ -1,24 +1,7 @@
-"""compute_average_subject_fmri.py が出す被験者平均 fMRI(.gz)を、音楽側 encoding と
-同じデータ契約の run 別 .npy に書き出す。
+"""被験者平均 fMRI を run ごとの (voxel, TR) .npy に保存する。
 
-音楽側の Resp_*.npy は (voxel, TR) 向きで、analysis 側(lpp_encoding.py の load_run_resp)が
-.T して (TR, voxel) に直して使う。LPP も同じ向き・命名に揃えるための転置エクスポート。
-
-入力: outputs/lpp_en_average_subject/average_subject_run-<i>.gz (i=0..n_runs-1)
-    = (TR, voxel) float32。compute_average_subject_fmri.py が run ごとに standardize(axis=0)
-      済みで保存(z-score)。trim/delay/窓平均は未(それらは analysis/lpp_encoding.py が実行時に行う)。
-出力: <repo>/data/speech/resp/lpp_en_avg-subject_run-<N>.npy (N=i+1, 1始まり)
-    = (voxel, TR) float32。standardize 済みのまま、転置するだけで値は変えない。
-
-window_align_fmri.py(窓IDキーで Y を固める方式)は音楽の流儀(生 resp.npy + 実行時窓平均)と
-非互換のため不採用で、本スクリプトが現行の Y 生成経路。
-
-使い方(mindtransformer_env, cwd=external/MindTransformer):
+MindTransformer ディレクトリから実行:
   python export_average_subject_to_resp.py
-  # 出力先や入力を変える場合:
-  python export_average_subject_to_resp.py \
-      --avg_dir outputs/lpp_en_average_subject \
-      --out_dir ../../data/speech/resp
 """
 import argparse
 import glob

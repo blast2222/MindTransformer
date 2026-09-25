@@ -1,37 +1,9 @@
-"""LLM の単語単位 activations を「時間窓 avg pooling」して、音楽側 (analysis) の
-encoding パイプラインと同じ NPZ 形式に変換する。
+"""単語単位 LLM activation を時間窓平均し、layer × state ごとの NPZ に保存する。
 
-MindTransformer の本来の Mode1 は単語 activation を HRF 畳み込みして fMRI に整合させるが、
-本研究では音楽側(GTZAN)と同じ枠組み（時間窓 avg pooling + 固定 delay）に揃えたい。
-そこで、既に抽出済みの LLM 単語 activations と各単語の onset/offset を使い、
-各 run を一定の窓幅・ストライドでスライスし、窓内に onset が入る単語を avg pooling して
-「窓ごとに 1 ベクトル」にする。
-
-出力は音楽側 emb_loader が読むのと同じ NPZ:
-  keys: 窓ID 配列（例 "lppEN_run1_0.00_10.00"）
-  vecs: (n_windows, dim) の avg-pooled embedding
-layer × state ごとに 1 ファイル（series 名 = "<series_prefix>-layer<L>-<new_state>"）。
-
-MindTransformer 内部の state 名は本スクリプトで wav2vec 側の LLM ブロック命名規則
-(pre-attn-norm / q / k / v / q-with-rope / k-with-rope / attn-out / context /
- post-attn-hidden / pre-ffn-norm / ffn-activated / ffn-output / block-output)
-にリネームして出力する。input_hidden_state は前レイヤの block-output と等価
-なので出力しない (final_block_output → block-output のみ残す)。
-
-入力:
-  outputs/lpp_llms_activations/<sanitized_model>_lpp_en_run-run-<R>_part-*_activations.gz
-    = dict{state: ndarray(n_layers, n_words, dim)}   ※ part が複数なら単語方向に連結
-  outputs/lpp_llms_activations/onsets_offsets_lpp_en.gz
-    = list[run] of tuple(onsets(n_words,), offsets(n_words,))   ※秒
-
-出力:
-  <out_root>/<model_key>/lpp_en-emb-window<W>s-stride<S>s-<model_key>-avg-<series>.npz
-
-使い方（mindtransformer_env, cwd=external/MindTransformer）:
+MindTransformer ディレクトリから実行:
   python window_avg_pool_activations.py \
       --model meta-llama/Llama-3.2-1B-Instruct \
       --model_key llama-3.2-1b \
-      --series_prefix llama \
       --window_s 10 --stride_s 2 \
       --out_root ../../data/speech/speech-emb
 """
@@ -45,10 +17,8 @@ import joblib
 
 ACT_DIR = "outputs/lpp_llms_activations"
 
-# MindTransformer 内部の hook key → 私の研究領域の series 名 (wav2vec-lv60 準拠) 対応。
-# ADR-0011 で決めた、window pool スクリプトが唯一の翻訳ポイント。
-# ここに無い state は「私の研究領域では扱わない」= npz として出力しない。
-# 特に input_hidden_state は前レイヤの block-output と等価なので冗長データとして落とす。
+# MindTransformer の hook state を出力 series 名へ対応付ける。
+# input_hidden_state は前 layer の block-output と重複するため出力しない。
 STATE_RENAME = {
     "pre_attn_norm":            "pre-attn-norm",
     "per_head_q":               "q",
