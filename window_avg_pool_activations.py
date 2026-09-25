@@ -171,6 +171,19 @@ def main():
             if missing:
                 print(f"  (info: activation に無い state) {sorted(missing)}")
         # 単語数の整合チェック
+        if not states_to_use:
+            requested = list(STATE_RENAME) if args.states is None else args.states
+            raise ValueError(
+                f"run{run_1}: requested states are absent from activation files. "
+                f"Requested: {requested}; available: {sorted(acts)}"
+            )
+        missing_states = [state for state in states_to_use if state not in acts]
+        if missing_states:
+            raise ValueError(
+                f"run{run_1}: requested states are missing from activation files: "
+                f"{missing_states}; available: {sorted(acts)}"
+            )
+
         any_state = states_to_use[0]
         n_layers, n_words, _ = np.asarray(acts[any_state]).shape
         if n_words != len(onsets):
