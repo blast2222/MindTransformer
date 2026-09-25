@@ -98,6 +98,18 @@ def main():
                         help="抽出する MindTransformer 内部 state 名（既定: STATE_RENAME 全キー）")
     args = parser.parse_args()
 
+    if not np.isfinite(args.window_s) or args.window_s <= 0:
+        raise ValueError(f"--window_s must be a positive finite value, got {args.window_s}")
+    if not np.isfinite(args.stride_s) or args.stride_s <= 0:
+        raise ValueError(f"--stride_s must be a positive finite value, got {args.stride_s}")
+    if args.states is not None:
+        unregistered_states = sorted(set(args.states) - set(STATE_RENAME))
+        if unregistered_states:
+            raise ValueError(
+                "--states contains state(s) without output names: "
+                f"{unregistered_states}. Supported states: {sorted(STATE_RENAME)}"
+            )
+
     series_prefix = args.series_prefix or args.model_key.split("-", 1)[0]
 
     # Per-run onsets and offsets.
